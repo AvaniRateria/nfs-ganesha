@@ -4,3 +4,9 @@
 [submodule "src/monitoring/prometheus-cpp-lite"]
 	path = src/monitoring/prometheus-cpp-lite
 	url = https://github.com/biaks/prometheus-cpp-lite.git
+[submodule "src/external/grpc"]
+	path = src/external/grpc
+	url = https://github.com/grpc/grpc.git
+[submodule "src/external/protobuf"]
+	path = src/external/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git

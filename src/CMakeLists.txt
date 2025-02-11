@@ -327,6 +327,9 @@ option(TIRPC_EPOLL "platform supports EPOLL or emulation" ON)
 # Build configure options
 goption(USE_DBUS "enable DBUS protocol support" ON)
 
+# Build gRPC
+goption(USE_GRPC "enable gRPC protocol support" ON)
+
 # Various DBUS enabled features
 option(USE_CB_SIMULATOR "enable callback simulator thread" OFF)
 
@@ -992,6 +995,110 @@ if(USE_DBUS)
   endif(NOT DBUS_FOUND)
 endif(USE_DBUS)
 
+# USE_GRPC
+gopt_test(USE_GRPC)
+if(USE_GRPC)
+
+add_compile_options(-Wno-error=attributes)
+set(GRPC_BUILD_PROTOBUF ON CACHE BOOL "build Protobuf with gRPC" FORCE)
+set(GRPC_BUILD_ABSL ON CACHE BOOL "Build Abseil with gRPC" FORCE)
+set(GRPC_BUILD_SHARED_LIBS ON  )
+set(protobuf_BUILD_TESTS OFF)
+set(ABSL_ENABLE_INSTALL ON)
+set(protobuf_INSTALL OFF)
+set(utf8_range_ENABLE_INSTALL OFF)
+
+
+#set(PROTOBUF_DISABLE_ABSL_HASH ON CACHE BOOL "Disable absl::hash target in protobuf" FORCE)
+#set(PROTOBUF_DISABLE_ABSL_LOG ON CACHE BOOL "Disable absl::log target in protobuf" FORCE)
+
+#set(GRPC_BUILD_TESTS OFF CACHE BOOL "Disable building tests including gmock and gtest" FORCE)
+#set(GRPC_BUILD_GMOCK OFF CACHE BOOL "Disable building gmock" FORCE)
+#set(GRPC_BUILD_GTEST OFF CACHE BOOL "Disable building gtest" FORCE)
+
+#set(PROTOBUF_BUILD_TESTS OFF CACHE BOOL "Disable building tests including gmock and gtest in protobuf" FORCE)
+#set(PROTOBUF_BUILD_GMOCK OFF CACHE BOOL "Disable building gmock in protobuf" FORCE)
+#set(PROTOBUF_BUILD_GTEST OFF CACHE BOOL "Disable building gtest in protobuf" FORCE)
+
+cmake_policy(SET CMP0079 NEW)
+cmake_policy(SET CMP0002 OLD)
+cmake_policy(SET CMP0028 NEW)
+
+add_subdirectory(external/grpc)
+
+#set(_REFLECTION grpc++_reflection)
+#set(_PROTOBUF_PROTOC $<TARGET_FILE:protoc>)
+#set(_GRPC_GRPCPP grpc++)
+#set(_GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:grpc_cpp_plugin>)
+
+include_directories(${PROTOBUF_INCLUDE_DIRS})
+
+set(PROTOBUF_LIBRARIES libprotobuf)
+set(GRPC_LIBRARIES grpc++)
+set(GRPC_CPP_PLUGIN $<TARGET_FILE:grpc_cpp_plugin>)
+
+get_filename_component(hw_proto ${CMAKE_SOURCE_DIR}/proto/nfsService.proto ABSOLUTE)
+get_filename_component(hw_proto_path "${hw_proto}" PATH)
+
+# Generated sources
+get_filename_component(proto_gen_dir ${CMAKE_BINARY_DIR}/proto_generated_file ABSOLUTE)
+set(hw_proto_srcs "${proto_gen_dir}/nfsService.pb.cc")
+set(hw_proto_hdrs "${proto_gen_dir}/nfsService.pb.h")
+set(hw_grpc_srcs "${proto_gen_dir}/nfsService.grpc.pb.cc")
+set(hw_grpc_hdrs "${proto_gen_dir}/nfsService.grpc.pb.h")
+
+add_custom_command(
+      OUTPUT "${hw_proto_srcs}" "${hw_proto_hdrs}" "${hw_grpc_srcs}" "${hw_grpc_hdrs}"
+      COMMAND ${_PROTOBUF_PROTOC}
+      ARGS --grpc_out "${proto_gen_dir}"
+        --cpp_out "${proto_gen_dir}"
+        -I "${hw_proto_path}"
+        --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}"
+        "${hw_proto}"
+      DEPENDS "${hw_proto}")
+
+include_directories(${PROTO_GEN_DIR})
+
+set(SERVER_SRC grpc_server/GrpcServer.cc)
+add_executable(grpc_server ${SERVER_SRC} ${PROTO_SRC} ${GRPC_SRC})
+#add_library(gRPC::grpc++ ALIAS gRPC::grpc++)
+add_library(hw_proto
+    ${hw_proto_srcs}
+    ${hw_proto_hdrs}
+    ${hw_grpc_srcs}
+    ${hw_grpc_hdrs}
+)
+
+#target_link_libraries(hw_proto
+#    PRIVATE
+#    gRPC::grpc++    # gRPC C++ library
+#    protobuf::libprotobuf   # Protobuf library
+#)
+
+#add_executable(hw_grpc_server grpc_server/GrpcServer.cc)
+#target_link_libraries(hw_grpc_server
+#    PRIVATE
+#    hw_proto  # Link the generated proto and grpc sources
+#    gRPC::grpc++   # Link gRPC C++ library
+#    protobuf::libprotobuf  # Link protobuf library
+#)
+
+#install(TARGETS grpc++ grpc++_reflection
+#        EXPORT grpcTargets
+#        LIBRARY DESTINATION lib
+#        ARCHIVE DESTINATION lib
+#        RUNTIME DESTINATION bin
+#        INCLUDES DESTINATION include)
+
+target_link_libraries(grpc_server
+  PRIVATE
+  ${GRPC_LIBRARIES}
+  ${PROTOBUF_LIBRARIES}
+)
+
+install(TARGETS grpc_server DESTINATION bin)
+endif(USE_GRPC)
+
 if(USE_CB_SIMULATOR AND NOT USE_DBUS)
   message(WARNING "The callback simulator needs DBUS.  Disabling callback simulator")
   set(USE_CB_SIMULATOR OFF)
@@ -1453,6 +1560,7 @@ message(STATUS "RADOS_URLS = ${RADOS_URLS}")
 message(STATUS "USE_CUNIT = ${USE_CUNIT}")
 message(STATUS "USE_UNWIND = ${USE_UNWIND}")
 message(STATUS "SANITIZE_ADDRESS = ${SANITIZE_ADDRESS}")
+message(STATUS "USE_GRPC = ${USE_GRPC}")
 
 set(USE_CB_SIMULATOR ${USE_CB_SIMULATOR}
   CACHE BOOL

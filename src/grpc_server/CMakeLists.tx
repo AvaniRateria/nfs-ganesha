@@ -1,0 +1,10 @@
+set(CMAKE_CXX_STANDARD 17)
+
+
+set(grpc_SRCS,
+    GrpcServer.cc
+    nfsServiceClient.cpp)
+
+add_library(grpcLib SHARED ${grpc_SRCS})
+target_link_libraries(grpcLib grpc++)
+

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package nfsService;
+
+service GetClientId {cl
+    // Get a list of client IDs
+    rpc GetClientIds (GetClientIdsRequest) returns (GetClientIdsResponse);
+}
+
+// Request message to get client IDs
+message GetClientIdsRequest {
+    // You can add additional request parameters if needed
+}
+
+// Response message containing a list of client IDs
+message GetClientIdsResponse {
+    repeated uint64 client_ids = 1;  // List of client IDs
+}
