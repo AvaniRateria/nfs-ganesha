@@ -34,7 +34,7 @@ class GrpcServer {
 	static constexpr int INVALID_FD = -1;
 	int server_fd_ = INVALID_FD;
 	bool running_ = false;
-	std::thread thread_id_;
+	std::thread server_thread_;
 	std::mutex mutex_;
 
 	// Delete copy/move constructor/assignment
@@ -43,9 +43,10 @@ class GrpcServer {
 	GrpcServer(GrpcServer &&) = delete;
 	GrpcServer &operator=(GrpcServer &&) = delete;
 
-	static void *server_thread(void *arg);
+	//static void *server_thread_(void *arg);
+	std::unique_ptr<grpc::Server> server_;
 };
 
-extern GrpcServer grpc_server;
+extern GrpcServer ganesha_grpc_server;
 
 #endif /* GANESHA_GRPC_H */

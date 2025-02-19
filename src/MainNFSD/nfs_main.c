@@ -579,7 +579,9 @@ int main(int argc, char *argv[])
 #endif /* USE_MONITORING */
 
 #ifdef USE_GRPC
+
 	grpc__init(nfs_param.core_param.grpc_port);
+
 #endif /* USE_GRPC */
 
 	/* initialize core subsystems and data structures */

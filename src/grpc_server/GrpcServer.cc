@@ -1,4 +1,7 @@
-/* This program is free software; you can redistribute it and/or
+/* Copyright (C) 2025, The Linux Box Corporation
+ * Contributor : Avani Rateria <arateria@redhat.com>
+ *
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
@@ -14,20 +17,24 @@
  *
  * -------------
  */
+
 #include <grpcpp/grpcpp.h>
 #include <iostream>
 #include <thread>
 #include <mutex>
 #include "GrpcServer.h"
-#include <proto/nfsService.grpc.pb.h>
-#include <nfsServiceServer.h>
+#include "nfsService.grpc.pb.h"
+#include "nfsServiceServer.h"
+#include <grpcpp/ext/proto_server_reflection_plugin.h>
+//#include <grpcpp/plugin.h>
+//#include <grpcpp/reflection/reflection.h>
 
 #define GRPCERROR(MESSAGE)                                                    \
         fprintf(stderr, "[%s:%d] %s: %s\n", __FILE__, __LINE__, (MESSAGE), \
                 strerror(errno))
 #define GRPCFATAL(MESSAGE) (GRPCERROR(MESSAGE), abort())
 
-GrpcServer grpc_server;
+GrpcServer ganesha_grpc_server;
 
 GrpcServer::GrpcServer() : running_(false) {}
 
@@ -46,14 +53,27 @@ void GrpcServer::start(uint16_t port)
     	grpc::ServerBuilder builder;
     	builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
 
-    	// Register your service here, e.g., GreeterServiceImpl
-    	// example::GreeterServiceImpl service;
-    	// builder.RegisterService(&service);
+	// Register the service with the builder
 	GetClientIdService showClientService;
 	builder.RegisterService(&showClientService);
 
-    	server_ = builder.BuildAndStart();
+	GetNfsGraceService nfsIngrace;
+	builder.RegisterService(&nfsIngrace);
 
+	GetSessionIdService getClientSessionIds;
+	builder.RegisterService(&getClientSessionIds);
+
+	//grpc::reflection.Register(server_);
+	// For grpc CLI
+	//grpc::reflection::ProtoServerReflectionPlugin reflection_plugin;
+	//builder.RegisterService(&reflection_plugin);
+
+	//grpc::reflection::EnableServerReflection(service, &builder);
+	grpc::reflection::InitProtoReflectionServerBuilderPlugin();
+	server_ = builder.BuildAndStart();
+	if (!server_) {
+		GRPCFATAL(("Failed to start server on %s" + server_address).c_str());
+	}
     	running_ = true;
 	server_thread_ = std::thread([this]() { server_->Wait(); });
 }
@@ -77,7 +97,7 @@ void grpc__init(uint16_t port)
         static bool initialized = false;
         if (initialized)
                 return;
-        grpc_server.start(port);
+        ganesha_grpc_server.start(port);
         initialized = true;
 }
 
